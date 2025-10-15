@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Jean Lafitte’s Ghost Map</title>
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<style>
+/* ----- PARCHMENT + LAYOUT ----- */
+html, body, #map { height: 100%; margin: 0; padding: 0; }
+body{
+  background: url("https://upload.wikimedia.org/wikipedia/commons/5/5d/Old_paper_texture_background.jpg")
+              no-repeat center center fixed;
+  background-size: cover;
+  font-family: "IM Fell English", serif, Georgia, serif;
+}
+
+/* Compass overlay (no clicks) */
+.leaflet-top.leaflet-left::before{
+  content:"";
+  position:absolute; top:10px; left:10px; width:100px; height:100px;
+  background: url("https://upload.wikimedia.org/wikipedia/commons/6/6b/Compass_rose_paper.svg") no-repeat center/contain;
+  opacity:.4; pointer-events:none;
+}
+
+/* Back button */
+.back-button{
+  background: rgba(0,0,0,.6); color:#fff; border:none; padding:6px 10px;
+  border-radius:4px; cursor:pointer; font-size:14px;
+  font-family: "IM Fell English", serif;
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+}
+.back-button:hover{ background: rgba(0,0,0,.8); }
+
+/* Glowy markers */
+.leaflet-interactive.glow{ filter: drop-shadow(0 0 8px limegreen); }
+</style>
+</head>
+
+<body>
+  <div id="map" aria-label="Interactive pirate map of the Gulf Coast"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+  // Base Gulf-Coast map (no default zoom control; we’ll add our own back button)
+  const map = L.map("map", { zoomControl: false }).setView([29.5, -93.5], 6);
+
+  // Tiles
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "&copy; OpenStreetMap contributors",
+    maxZoom: 19
+  }).addTo(map);
+
+  // Regions (clickable)
+  const regions = [
+    { name: "Galveston",     coords: [29.301,  -94.797],  zoom: 13 },
+    { name: "Lake Charles",  coords: [30.2266, -93.2174], zoom: 12 },
+    { name: "Fertitta Bay",  coords: [29.95,   -93.93],   zoom: 12 },
+    { name: "New Orleans",   coords: [29.9511, -90.0715], zoom: 12 },
+  ];
+
+  regions.forEach(r => {
+    const circle = L.circleMarker(r.coords, {
+      color: "limegreen", fillColor: "limegreen", fillOpacity: 0.9, radius: 10
+    })
+    .addTo(map)
+    .bindPopup("<b>"+r.name+"</b><br>Tap to explore.")
+    .on("click", () => openRegion(r));
+
+    // ensure glow class gets on the SVG path
+    if (circle._path) circle._path.classList.add("glow");
+    else circle.on("add", () => circle._path && circle._path.classList.add("glow"));
+  });
+
+  let treasureLayer = null;
+
+  // Zoom + region content
+  function openRegion(region){
+    map.flyTo(region.coords, region.zoom, { animate:true, duration: 2 });
+    if (treasureLayer) treasureLayer.remove();
+    treasureLayer = L.layerGroup().addTo(map);
+
+    if (region.name === "Galveston"){
+      const sites = [
+        { title: "The Tremont House", lat: 29.3056, lng: -94.7937,
+          story: "Ghost of Miss Kate haunts the halls." },
+        { title: "Maison Rouge", lat: 29.2992, lng: -94.7901,
+          story: "Where Jean Laffite hid his fortune." },
+        { title: "Bishop’s Palace", lat: 29.2988, lng: -94.7877,
+          story: "The Watcher in the Window appears at dusk." }
+      ];
+      sites.forEach(s => L.marker([s.lat,s.lng]).addTo(treasureLayer)
+        .bindPopup("<b>"+s.title+"</b><br>"+s.story));
+    }
+
+    addBackButton();
+  }
+
+  // Back-to-gulf control
+  function addBackButton(){
+    if (map.backButtonControl) return;
+    const ctrl = L.control({ position: "topright" });
+    ctrl.onAdd = () => {
+      const btn = L.DomUtil.create("button", "back-button");
+      btn.textContent = "🏴‍☠️ Back to Gulf Map";
+      btn.onclick = () => {
+        map.flyTo([29.5,-93.5], 6, { animate:true });
+        if (treasureLayer) treasureLayer.remove();
+      };
+      return btn;
+    };
+    ctrl.addTo(map);
+    map.backButtonControl = ctrl;
+  }
+  </script>
+</body>
+</html>
